@@ -46,7 +46,7 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     ServicesBinding.instance.keyboard.addHandler(_onKeyDown);
-    Timer.periodic(const Duration(milliseconds: 300), (timer) {
+    Timer.periodic(const Duration(milliseconds: 320), (timer) {
       Position myPosition = positions.last;
       if (directionality == AxisDirection.up) {
         positions.insert(positions.length - 1, Position(myPosition.left, myPosition.top));
