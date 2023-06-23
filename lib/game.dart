@@ -14,18 +14,18 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  List<Position> positions = [Position(0, 0)];
+  ValueNotifier<List<Position>> positions = ValueNotifier([Position(0, 0)]);
   final Key _key = const Key('main');
   AxisDirection directionality = AxisDirection.right;
   Position goal = Position.empty();
   bool _onKeyDown(KeyEvent event) {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
       if (event.physicalKey == PhysicalKeyboardKey.backspace) {
-        setState(() {
-          if (positions.length != 1) {
-            positions.removeAt(positions.length - 1);
-          }
-        });
+        if (positions.value.length != 1) {
+          positions.value.removeAt(positions.value.length - 1);
+        }
+
+        positions.notifyListeners();
         return true;
       }
       if (directionality != AxisDirection.down &&
@@ -51,10 +51,10 @@ class _GameScreenState extends State<GameScreen> {
     super.initState();
     ServicesBinding.instance.keyboard.addHandler(_onKeyDown);
     Timer.periodic(const Duration(milliseconds: 200), (timer) async {
-      for (int i = 0; i + 1 < positions.length; i++) {
-        positions[i] = Position(positions[i + 1].left, positions[i + 1].top);
+      for (int i = 0; i + 1 < positions.value.length; i++) {
+        positions.value[i] = Position(positions.value[i + 1].left, positions.value[i + 1].top);
       }
-      Position myPosition = positions.last;
+      Position myPosition = positions.value.last;
       if (directionality == AxisDirection.up) {
         myPosition.top = myPosition.top - 80;
       } else if (directionality == AxisDirection.down) {
@@ -65,8 +65,8 @@ class _GameScreenState extends State<GameScreen> {
         myPosition.left = myPosition.left + 80;
       }
       //collision
-      for (int i = 0; i + 1 < positions.length; i++) {
-        if (positions[i].top == myPosition.top && positions[i].left == myPosition.left) {
+      for (int i = 0; i + 1 < positions.value.length; i++) {
+        if (positions.value[i].top == myPosition.top && positions.value[i].left == myPosition.left) {
           await showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -108,15 +108,6 @@ class _GameScreenState extends State<GameScreen> {
                             color: Colors.white,
                           ),
                         ),
-                        // const SizedBox(height: 20.0),
-                        // Text(
-                        //   "Score: ${score.value}",
-                        //   style: const TextStyle(
-                        //     fontSize: 20.0,
-                        //     fontWeight: FontWeight.bold,
-                        //     color: Colors.white,
-                        //   ),
-                        // ),
                         const SizedBox(height: 20.0),
                         TextButton(
                           onPressed: () {
@@ -138,12 +129,12 @@ class _GameScreenState extends State<GameScreen> {
               );
             },
           );
-          positions = [Position.empty()];
+          positions.value = [Position.empty()];
           directionality = AxisDirection.right;
         }
       }
 
-      setState(() {});
+      positions.notifyListeners();
       _checkGoalReached();
     });
   }
@@ -165,21 +156,21 @@ class _GameScreenState extends State<GameScreen> {
 
   // Check if the snake has reached the goal and generate a new goal if it has
   void _checkGoalReached() {
-    final lastPosition = positions.last;
+    final lastPosition = positions.value.last;
     if ((lastPosition.left - goal.left).abs() <= 50 && (lastPosition.top - goal.top).abs() <= 50) {
       _generateGoal();
-      Position myPosition = positions.last;
+      Position myPosition = positions.value.last;
       if (directionality == AxisDirection.up) {
-        positions.insert(positions.length - 1, Position(myPosition.left, myPosition.top));
+        positions.value.insert(positions.value.length - 1, Position(myPosition.left, myPosition.top));
       } else if (directionality == AxisDirection.down) {
-        positions.insert(positions.length - 1, Position(myPosition.left, myPosition.top));
+        positions.value.insert(positions.value.length - 1, Position(myPosition.left, myPosition.top));
       } else if (directionality == AxisDirection.left) {
-        positions.insert(positions.length - 1, Position(myPosition.left, myPosition.top));
+        positions.value.insert(positions.value.length - 1, Position(myPosition.left, myPosition.top));
       } else if (directionality == AxisDirection.right) {
-        positions.insert(positions.length - 1, Position(myPosition.left, myPosition.top));
+        positions.value.insert(positions.value.length - 1, Position(myPosition.left, myPosition.top));
       }
 
-      setState(() {});
+      positions.notifyListeners();
     }
   }
 
@@ -187,50 +178,55 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          ...positions.mapIndexed(
-            (index, entry) => AnimatedPositioned(
-              duration: const Duration(milliseconds: 200),
-              key: index == positions.length - 1 ? _key : null,
-              curve: Curves.linear,
-              left: entry.left,
-              top: entry.top,
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: index == positions.length - 1 ? Colors.blue : Colors.red,
-                  boxShadow: [
-                    BoxShadow(
-                      color: (index == positions.length - 1 ? Colors.blue : Colors.red).withOpacity(0.1),
-                      blurRadius: 8,
-                      spreadRadius: 8,
+      body: ValueListenableBuilder(
+        valueListenable: positions,
+        builder: (context, value, child) {
+          return Stack(
+            children: [
+              ...positions.value.mapIndexed(
+                (index, entry) => AnimatedPositioned(
+                  duration: const Duration(milliseconds: 200),
+                  key: index == positions.value.length - 1 ? _key : null,
+                  curve: Curves.linear,
+                  left: entry.left,
+                  top: entry.top,
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: index == positions.value.length - 1 ? Colors.blue : Colors.red,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (index == positions.value.length - 1 ? Colors.blue : Colors.red).withOpacity(0.1),
+                          blurRadius: 8,
+                          spreadRadius: 8,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            left: goal.left,
-            top: goal.top,
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.1),
-                    blurRadius: 8,
-                    spreadRadius: 8,
+              Positioned(
+                left: goal.left,
+                top: goal.top,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.1),
+                        blurRadius: 8,
+                        spreadRadius: 8,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
